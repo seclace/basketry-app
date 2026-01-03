@@ -9,7 +9,8 @@ export const defaultCategories: Category[] = [
 	{ id: 'cat-pantry', name: 'Pantry' },
 	{ id: 'cat-frozen', name: 'Frozen' },
 	{ id: 'cat-household', name: 'Household' },
-	{ id: 'cat-drinks', name: 'Drinks' }
+	{ id: 'cat-drinks', name: 'Drinks' },
+	{ id: 'cat-other', name: 'Other' }
 ];
 
 export const defaultUnits: Unit[] = [

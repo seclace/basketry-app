@@ -10,6 +10,7 @@
 	--danger: #ff6b6b;
 	--border: #232a33;
 	--shadow: 0 16px 40px rgba(5, 8, 12, 0.55);
+	--gutter: 24px;
 	font-family:
 		'Space Grotesk',
 		system-ui,
@@ -26,6 +27,7 @@ body {
 	background: radial-gradient(circle at top, #131826 0%, #0b0d10 55%);
 	color: var(--text);
 	min-height: 100vh;
+	overflow: hidden;
 }
 
 a {
@@ -43,15 +45,55 @@ textarea {
 .app {
 	display: grid;
 	grid-template-columns: 280px 1fr;
-	gap: 24px;
-	padding: 28px;
+	gap: var(--gutter);
+	padding: var(--gutter);
 	max-width: 1200px;
 	margin: 0 auto;
+	height: 100vh;
+}
+
+.app.sidebar-collapsed {
+	grid-template-columns: 1fr;
+}
+
+.app.sidebar-collapsed .sidebar {
+	display: none;
 }
 
 @media (max-width: 900px) {
 	.app {
 		grid-template-columns: 1fr;
+	}
+
+	.sidebar {
+		position: fixed;
+		top: var(--gutter);
+		left: var(--gutter);
+		right: var(--gutter);
+		bottom: var(--gutter);
+		z-index: 20;
+	}
+
+	.app.sidebar-collapsed .sidebar {
+		display: none;
+	}
+
+	.app.sidebar-open .main {
+		filter: blur(2px);
+	}
+}
+
+@media (max-width: 900px) {
+	.app {
+		grid-template-columns: 1fr;
+	}
+
+	.sidebar header {
+		justify-content: space-between;
+	}
+
+	.sidebar .sidebar-toggle {
+		margin-right: auto;
 	}
 }
 
@@ -62,6 +104,35 @@ textarea {
 	border-radius: 20px;
 	padding: 20px;
 	box-shadow: var(--shadow);
+	max-height: 100%;
+	overflow: hidden;
+}
+
+.main {
+	display: flex;
+	flex-direction: column;
+}
+
+.sidebar {
+	gap: 16px;
+	display: flex;
+	flex-direction: column;
+}
+
+.sidebar-list-scroll {
+	overflow: auto;
+	flex: 1;
+	min-height: 0;
+}
+
+.items-scroll {
+	overflow: auto;
+	flex: 1;
+	min-height: 0;
+	margin-top: 8px;
+}
+.sidebar-language {
+	margin-top: auto;
 }
 
 .sidebar header,
@@ -69,6 +140,12 @@ textarea {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	gap: 12px;
+}
+
+.header-row {
+	display: flex;
+	align-items: center;
 	gap: 12px;
 }
 
@@ -80,8 +157,29 @@ h3 {
 	letter-spacing: -0.02em;
 }
 
+.editable-title[contenteditable='true'] {
+	cursor: text;
+	border-radius: 8px;
+	padding: 2px 6px;
+}
+
+.editable-title[contenteditable='true']:hover {
+	background: rgba(86, 194, 255, 0.08);
+}
+
+.editable-title[contenteditable='true']:focus {
+	outline: 1px solid var(--accent);
+	background: rgba(86, 194, 255, 0.12);
+}
+
+.editable-title[contenteditable='true']:empty::before {
+	content: attr(data-placeholder);
+	color: var(--muted);
+}
+
 h1 {
 	font-size: 24px;
+	margin: 0;
 }
 
 h2 {
@@ -104,6 +202,42 @@ button {
 	transition:
 		transform 0.2s ease,
 		box-shadow 0.2s ease;
+}
+
+.icon-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px;
+	min-height: 36px;
+}
+
+.icon-button svg {
+	width: 18px;
+	height: 18px;
+	fill: currentColor;
+}
+
+.icon-only {
+	padding: 8px;
+	min-width: 36px;
+	justify-content: center;
+}
+
+.full-width {
+	width: 100%;
+	justify-content: center;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	border: 0;
 }
 
 button.secondary {
@@ -180,11 +314,22 @@ textarea {
 	transition:
 		border-color 0.2s ease,
 		background 0.2s ease;
+	cursor: pointer;
 }
 
 .list-item.active {
 	border-color: var(--accent);
 	background: rgba(86, 194, 255, 0.12);
+}
+
+.list-item:hover {
+	border-color: rgba(86, 194, 255, 0.4);
+	background: rgba(86, 194, 255, 0.08);
+}
+
+.list-item:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 
 .category-group {
@@ -242,6 +387,32 @@ textarea {
 	flex-wrap: wrap;
 }
 
+.list-actions {
+	gap: 10px;
+}
+
+.add-item-bottom {
+	margin-top: 16px;
+	align-self: flex-start;
+	margin-top: auto;
+}
+.actions-right {
+	justify-content: flex-end;
+}
+
+.inline-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.inline-checkbox {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
 .suggestions {
 	display: flex;
 	flex-direction: column;
@@ -284,6 +455,13 @@ dialog::backdrop {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
+	position: relative;
+}
+
+.dialog-close {
+	position: absolute;
+	top: 20px;
+	right: 20px;
 }
 
 .qr {

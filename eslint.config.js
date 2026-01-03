@@ -7,7 +7,14 @@ import prettier from 'eslint-config-prettier';
 
 export default [
 	{
-		ignores: ['node_modules/', 'build/', '.svelte-kit/', 'dist/', 'prettier.config.cjs']
+		ignores: [
+			'node_modules/',
+			'build/',
+			'.svelte-kit/',
+			'dist/',
+			'dev-dist/',
+			'prettier.config.cjs'
+		]
 	},
 	{
 		languageOptions: {

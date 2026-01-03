@@ -1,5 +1,5 @@
 <script lang="ts">
-import { onMount, tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 import { get } from 'svelte/store';
 	import QRCode from 'qrcode';
 	import { BrowserQRCodeReader } from '@zxing/browser';
@@ -32,22 +32,25 @@ import type { CatalogProduct } from '$lib/catalog';
 	let units: Unit[] = [];
 	let products: Product[] = [];
 	let activeListId: string | null = null;
-	let listNameInput = '';
-let listTitle = '';
+	let listTitle = '';
+	let sidebarOpen = true;
 
-let formMode: 'add' | 'edit' = 'add';
-let editingItemId: string | null = null;
-let productName = '';
-let quantity = 1;
-let unitId = '';
-let categoryId = '';
-let comment = '';
-let scope = '';
+	let formMode: 'add' | 'edit' = 'add';
+	let editingItemId: string | null = null;
+	let productName = '';
+	let quantity = 1;
+	let unitId = '';
+	let categoryId = '';
+	let comment = '';
+	let scope = '';
 let suggestions: CatalogProduct[] = [];
 let showSuggestions = false;
 
 	let exportDialog: HTMLDialogElement | null = null;
 	let importDialog: HTMLDialogElement | null = null;
+	let itemDialog: HTMLDialogElement | null = null;
+let confirmDialog: HTMLDialogElement | null = null;
+	let productInputEl: HTMLInputElement | null = null;
 	let qrDataUrl = '';
 	let scanError = '';
 	let pendingPayload: SharePayload | null = null;
@@ -55,6 +58,7 @@ let showSuggestions = false;
 	let mergeTargetId = '';
 	let videoEl: HTMLVideoElement | null = null;
 	let scanner: BrowserQRCodeReader | null = null;
+	let addAnother = true;
 
 	const resetForm = () => {
 		formMode = 'add';
@@ -67,10 +71,13 @@ let showSuggestions = false;
 		scope = '';
 		suggestions = [];
 		showSuggestions = false;
+		addAnother = true;
 	};
 
 	const loadAll = async () => {
-		lists = await getLists();
+		lists = (await getLists()).sort(
+			(a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+		);
 		categories = await getCategories();
 		units = await getUnits();
 		products = await getProducts();
@@ -91,18 +98,31 @@ let showSuggestions = false;
 		items = await getItemsByList(activeListId);
 	};
 
+	const formatListDate = () => {
+		const localeTag = $locale === 'ru' ? 'ru-RU' : 'en-US';
+		return new Date().toLocaleDateString(localeTag, {
+			day: '2-digit',
+			month: 'short'
+		});
+	};
+
+	const buildDefaultListName = () => {
+		const date = formatListDate();
+		return $locale === 'ru' ? `Покупки ${date}` : `Weekly ${date}`;
+	};
+
 	const selectList = async (id: string) => {
 		activeListId = id;
 		listTitle = lists.find((list) => list.id === id)?.name ?? '';
 		mergeTargetId = id;
 		await loadItems();
+		if (window.matchMedia('(max-width: 900px)').matches) {
+			sidebarOpen = false;
+		}
 	};
 
 	const addList = async () => {
-		const name = listNameInput.trim();
-		if (!name) return;
-		const list = await createList(name);
-		listNameInput = '';
+		const list = await createList(buildDefaultListName());
 		await loadAll();
 		await selectList(list.id);
 	};
@@ -115,11 +135,37 @@ let showSuggestions = false;
 		await loadAll();
 	};
 
+	const handleListTitleInput = (event: Event) => {
+		const target = event.currentTarget as HTMLElement | null;
+		if (!target) return;
+		listTitle = target.innerText;
+	};
+
+	const handleListTitleKey = (event: KeyboardEvent) => {
+		if (event.key !== 'Enter') return;
+		event.preventDefault();
+		(event.currentTarget as HTMLElement | null)?.blur();
+	};
+
 	const removeList = async () => {
+		if (!activeListId) return;
+		confirmDialog?.showModal();
+	};
+
+	const confirmRemoveList = async () => {
 		if (!activeListId) return;
 		await deleteList(activeListId);
 		activeListId = null;
+		confirmDialog?.close();
 		await loadAll();
+	};
+
+	const cancelRemoveList = () => {
+		confirmDialog?.close();
+	};
+
+	const toggleSidebar = () => {
+		sidebarOpen = !sidebarOpen;
 	};
 
 	const handleProductInput = (value: string) => {
@@ -142,19 +188,23 @@ let showSuggestions = false;
 		const resolved = resolveCategoryForName(value, $locale);
 		if (resolved) {
 			categoryId = resolved;
+		} else if (otherCategoryId) {
+			categoryId = otherCategoryId;
 		}
 	};
 
-	const selectSuggestion = (product: CatalogProduct) => {
+	const selectSuggestion = async (product: CatalogProduct) => {
 		const name = product.names[$locale] ?? product.names.en;
 		productName = name;
 		categoryId = product.categoryId;
 		unitId = product.unitId;
 		suggestions = [];
 		showSuggestions = false;
+		await tick();
+		productInputEl?.focus();
 	};
 
-	const startEdit = (item: Item) => {
+	const startEdit = async (item: Item) => {
 		formMode = 'edit';
 		editingItemId = item.id;
 		productName = item.name;
@@ -164,10 +214,22 @@ let showSuggestions = false;
 		comment = item.comment;
 		scope = item.scope;
 		showSuggestions = false;
+		addAnother = true;
+		itemDialog?.showModal();
+		await tick();
+		productInputEl?.focus();
+	};
+
+	const openAddItem = async () => {
+		resetForm();
+		itemDialog?.showModal();
+		await tick();
+		productInputEl?.focus();
 	};
 
 	const submitItem = async () => {
 		if (!activeListId) return;
+		const keepAdding = formMode === 'add' && addAnother;
 		const name = productName.trim();
 		if (!name) return;
 		let chosenCategoryId = categoryId || categories[0]?.id;
@@ -182,13 +244,18 @@ let showSuggestions = false;
 		const resolvedCategory = resolveCategoryForName(name, $locale);
 		if (resolvedCategory) {
 			chosenCategoryId = resolvedCategory;
+		} else if (otherCategoryId) {
+			chosenCategoryId = otherCategoryId;
 		}
 
 		const existing = await findProductByName(name);
 		const productId = existing
 			? existing.id
-			: (await createProduct(name, chosenCategoryId ?? categoryId, chosenUnitId ?? unitId))
-					.id;
+			: (await createProduct(
+					name,
+					chosenCategoryId ?? otherCategoryId,
+					chosenUnitId ?? unitId
+			  )).id;
 
 		if (formMode === 'edit' && editingItemId) {
 			await updateItem(editingItemId, {
@@ -213,6 +280,16 @@ let showSuggestions = false;
 		}
 
 		await loadAll();
+
+		if (keepAdding) {
+			resetForm();
+			addAnother = true;
+			itemDialog?.showModal();
+			await tick();
+			productInputEl?.focus();
+		} else {
+			itemDialog?.close();
+		}
 	};
 
 	const removeItem = async (id: string) => {
@@ -246,9 +323,21 @@ let showSuggestions = false;
 		startScan();
 	};
 
+	const stopScanner = () => {
+		const current = scanner as unknown as {
+			reset?: () => void;
+			stopContinuousDecode?: () => void;
+			stopStreams?: () => void;
+		};
+		current?.stopContinuousDecode?.();
+		current?.stopStreams?.();
+		current?.reset?.();
+		scanner = null;
+	};
+
 	const startScan = async () => {
 		if (!videoEl) return;
-		scanner?.reset();
+		stopScanner();
 		scanner = new BrowserQRCodeReader();
 		try {
 			await scanner.decodeFromVideoDevice(null, videoEl, (result) => {
@@ -259,22 +348,46 @@ let showSuggestions = false;
 					return;
 				}
 				pendingPayload = parsed;
-				scanner?.reset();
+				stopScanner();
 			});
 		} catch (error) {
-		scanError = error instanceof Error ? error.message : get(t).cameraError;
+				scanError = error instanceof Error ? error.message : get(t).cameraError;
 		}
 	};
 
 	const closeImport = () => {
-		scanner?.reset();
+		stopScanner();
 		pendingPayload = null;
-		scanError = '';
+				scanError = '';
 		importDialog?.close();
 	};
 
+	const closeItemDialog = () => {
+		itemDialog?.close();
+	};
+
+	const handleItemDialogKey = (event: KeyboardEvent) => {
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			closeItemDialog();
+			return;
+		}
+		if (event.key === 'Enter') {
+			const target = event.target as HTMLElement | null;
+			if (target?.tagName === 'TEXTAREA') return;
+			event.preventDefault();
+			submitItem();
+		}
+	};
+
+	const handleItemDialogClick = (event: MouseEvent) => {
+		if (event.target === itemDialog) {
+			closeItemDialog();
+		}
+	};
+
 	const handleImportClose = () => {
-		scanner?.reset();
+		stopScanner();
 	};
 
 	const confirmImport = async () => {
@@ -298,6 +411,7 @@ let showSuggestions = false;
 	$: categoryMap = new Map(
 		categories.map((category) => [category.id, $t.categoryName?.[category.id] ?? category.name])
 	);
+$: otherCategoryId = categories.find((category) => category.id === 'cat-other')?.id ?? '';
 	$: unitMap = new Map(
 		units.map((unit) => [unit.id, $t.unitShort?.[unit.id] ?? unit.short])
 	);
@@ -315,121 +429,130 @@ let showSuggestions = false;
 	});
 </script>
 
-<div class="app">
+<div class={`app ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
 	<aside class="sidebar">
 		<header>
-	<h1>{$t.appName}</h1>
-	<button class="secondary" on:click={openImport}>{$t.importQr}</button>
+			<button
+				class="secondary icon-button icon-only sidebar-toggle"
+				on:click={toggleSidebar}
+				aria-label={$t.toggleSidebar}
+			>
+				{#if sidebarOpen}
+					<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+						<path d="M6 6l12 12M18 6L6 18" />
+					</svg>
+				{:else}
+					<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+						<path d="M4 7h16M4 12h16M4 17h16" />
+					</svg>
+				{/if}
+				<span class="sr-only">{$t.toggleSidebar}</span>
+			</button>
+			<h1>{$t.appName}</h1>
+			<button class="secondary icon-button icon-only" on:click={openImport} aria-label={$t.importQr}>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path d="M12 20l-6-6 1.4-1.4L11 16.2V4h2v12.2l3.6-3.6L18 14l-6 6z" />
+				</svg>
+				<span class="sr-only">{$t.importQr}</span>
+			</button>
 		</header>
-	<p>{$t.sidebarHint}</p>
 
-		<div class="field">
-		<label for="list-name">{$t.newListLabel}</label>
-		<input id="list-name" placeholder={$t.newListPlaceholder} bind:value={listNameInput} />
-	</div>
-	<button on:click={addList}>{$t.createList}</button>
-
+		<div class="sidebar-list-scroll">
 		<div class="list">
 			{#each lists as list (list.id)}
-				<div class={`list-item ${list.id === activeListId ? 'active' : ''}`}>
+				<div
+					class={`list-item ${list.id === activeListId ? 'active' : ''}`}
+					role="button"
+					tabindex="0"
+					on:click={() => selectList(list.id)}
+					on:keydown={(event) => event.key === 'Enter' && selectList(list.id)}
+				>
 					<div>
 						<strong>{list.name}</strong>
 						<div class="meta">{list.id.slice(0, 6)}</div>
 					</div>
-				<button class="ghost" on:click={() => selectList(list.id)}>{$t.open}</button>
-			</div>
-		{/each}
-	</div>
+				</div>
+			{/each}
+		</div>
+		</div>
 
-	<div class="field">
-		<label for="lang">{$t.language}</label>
-		<select id="lang" bind:value={$locale}>
-			<option value="en">English</option>
-			<option value="ru">Русский</option>
-		</select>
-	</div>
-</aside>
+		<div class="field sidebar-language">
+			<label for="lang">{$t.language}</label>
+			<select id="lang" bind:value={$locale}>
+				<option value="en">English</option>
+				<option value="ru">Русский</option>
+			</select>
+		</div>
+
+		<button class="icon-button icon-only full-width create-list-button" on:click={addList} aria-label={$t.createList}>
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M11 5h2v14h-2zM5 11h14v2H5z" />
+			</svg>
+			<span class="sr-only">{$t.createList}</span>
+		</button>
+	</aside>
 
 	<main class="main">
 		<header>
-			<div>
-			<h2>{listTitle || $t.selectList}</h2>
-			<p>{items.length} {$t.itemsCount}</p>
-		</div>
-		<div class="actions">
-			<button class="secondary" on:click={openExport} disabled={!activeListId}>{$t.shareQr}</button>
-			<button class="danger" on:click={removeList} disabled={!activeListId}>{$t.deleteList}</button>
-		</div>
-	</header>
-
+			<div class="header-row">
+				<button class="secondary icon-button icon-only" on:click={toggleSidebar} aria-label={$t.toggleSidebar}>
+					{#if sidebarOpen}
+						<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+							<path d="M6 6l12 12M18 6L6 18" />
+						</svg>
+					{:else}
+						<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+							<path d="M4 7h16M4 12h16M4 17h16" />
+						</svg>
+					{/if}
+					<span class="sr-only">{$t.toggleSidebar}</span>
+				</button>
+				<div class="items-scroll">
 		{#if activeListId}
-			<div class="field">
-			<label for="list-title">{$t.listNameLabel}</label>
-			<input id="list-title" bind:value={listTitle} />
-		</div>
-		<button class="secondary" on:click={saveListName}>{$t.saveName}</button>
-
-		<section class="category-group">
-			<h3>{formMode === 'edit' ? $t.editItem : $t.addItem}</h3>
-			<div class="field">
-				<label>{$t.productLabel}</label>
-				<input
-					placeholder={$t.selectProduct}
-					bind:value={productName}
-					on:input={(event) =>
-						handleProductInput((event.currentTarget as HTMLInputElement).value)}
-				/>
+					<h2
+						class="editable-title"
+						contenteditable="true"
+						spellcheck="false"
+						data-placeholder={$t.listNameLabel}
+						on:input={handleListTitleInput}
+						on:blur={saveListName}
+						on:keydown={handleListTitleKey}
+					>
+						{listTitle}
+					</h2>
+				{:else}
+					<h2>{$t.selectList}</h2>
+				{/if}
 			</div>
-
-			{#if showSuggestions}
-				<div class="suggestions">
-					{#each suggestions as suggestion (suggestion.id)}
-						<button
-							type="button"
-							class="suggestion"
-							on:mousedown={() => selectSuggestion(suggestion)}
-						>
-							{suggestion.names[$locale] ?? suggestion.names.en}
-						</button>
-					{/each}
-				</div>
-			{/if}
-
-			<div class="field">
-				<label>{$t.categoryLabel}</label>
-				<input value={categoryMap.get(categoryId) ?? ''} disabled />
+			<div class="actions list-actions">
+				<button
+					class="secondary icon-button icon-only"
+					on:click={openExport}
+					disabled={!activeListId}
+					aria-label={$t.shareQr}
+				>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M6 12l6-6 6 6-1.4 1.4L13 9.8V20h-2V9.8L7.4 13.4 6 12z" />
+					</svg>
+					<span class="sr-only">{$t.shareQr}</span>
+				</button>
+				<button
+					class="danger icon-button icon-only"
+					on:click={removeList}
+					disabled={!activeListId}
+					aria-label={$t.deleteList}
+				>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
+					</svg>
+					<span class="sr-only">{$t.deleteList}</span>
+				</button>
 			</div>
+		</header>
+		<p>{items.length} {$t.itemsCount}</p>
 
-				<div class="field">
-					<label>{$t.quantityLabel}</label>
-					<input type="number" min="0" step="0.1" bind:value={quantity} />
-				</div>
-
-				<div class="field">
-					<label>{$t.unitLabel}</label>
-					<select bind:value={unitId}>
-						{#each units as unit (unit.id)}
-							<option value={unit.id}>{unitMap.get(unit.id) ?? unit.short}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div class="field">
-					<label>{$t.scopeLabel}</label>
-					<input bind:value={scope} placeholder={$t.scopePlaceholder} />
-				</div>
-
-				<div class="field">
-					<label>{$t.commentLabel}</label>
-					<textarea bind:value={comment} placeholder={$t.commentPlaceholder}></textarea>
-				</div>
-
-				<div class="actions">
-					<button on:click={submitItem}>{formMode === 'edit' ? $t.editItem : $t.addItem}</button>
-					<button class="secondary" on:click={resetForm}>{$t.reset}</button>
-				</div>
-			</section>
-
+		<div class="items-scroll">
+		{#if activeListId}
 			{#if groupedEntries.length === 0}
 				<p>{$t.noItems}</p>
 			{/if}
@@ -442,15 +565,15 @@ let showSuggestions = false;
 					</div>
 					{#each groupItems as item (item.id)}
 						<div class={`item-row ${item.purchased ? 'done' : ''}`}>
-								<input
-									type="checkbox"
-									checked={item.purchased}
-									on:change={(event) =>
-										togglePurchased(
-											item.id,
-											(event.currentTarget as HTMLInputElement).checked
-										)}
-								/>
+							<input
+								type="checkbox"
+								checked={item.purchased}
+								on:change={(event) =>
+									togglePurchased(
+										item.id,
+										(event.currentTarget as HTMLInputElement).checked
+									)}
+							/>
 							<div>
 								<strong>{productNameMap.get(item.productId) ?? item.name}</strong>
 								<div class="meta">
@@ -464,68 +587,238 @@ let showSuggestions = false;
 								{/if}
 							</div>
 							<div class="actions">
-								<button class="ghost" on:click={() => startEdit(item)}>{$t.edit}</button>
-								<button class="ghost" on:click={() => removeItem(item.id)}>{$t.remove}</button>
+								<button class="ghost icon-button icon-only" on:click={() => startEdit(item)} aria-label={$t.edit}>
+									<svg viewBox="0 0 24 24" aria-hidden="true">
+										<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" />
+									</svg>
+									<span class="sr-only">{$t.edit}</span>
+								</button>
+								<button class="ghost icon-button icon-only" on:click={() => removeItem(item.id)} aria-label={$t.remove}>
+									<svg viewBox="0 0 24 24" aria-hidden="true">
+										<path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
+									</svg>
+									<span class="sr-only">{$t.remove}</span>
+								</button>
 							</div>
 						</div>
 					{/each}
 				</section>
 			{/each}
 		{:else}
-		<p>{$t.startList}</p>
-	{/if}
-</main>
+			<p>{$t.startList}</p>
+		{/if}
+		</div>
+		<button
+			class="icon-button icon-only add-item-bottom full-width"
+			on:click={openAddItem}
+			disabled={!activeListId}
+			aria-label={$t.addItem}
+		>
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M11 5h2v14h-2zM5 11h14v2H5z" />
+			</svg>
+			<span class="sr-only">{$t.addItem}</span>
+		</button>
+	</main>
 </div>
 
 <dialog bind:this={exportDialog}>
 	<div class="dialog-content">
-	<h3>{$t.shareTitle}</h3>
-	{#if qrDataUrl}
-		<div class="qr"><img src={qrDataUrl} alt="QR for list" /></div>
-		<p>{$t.shareHint}</p>
-	{/if}
-	<button class="secondary" on:click={() => exportDialog?.close()}>{$t.close}</button>
-</div>
+		<h3>{$t.shareTitle}</h3>
+		{#if qrDataUrl}
+			<div class="qr"><img src={qrDataUrl} alt="QR for list" /></div>
+			<p>{$t.shareHint}</p>
+		{/if}
+		<button
+			class="secondary icon-button icon-only dialog-close"
+			on:click={() => exportDialog?.close()}
+			aria-label={$t.close}
+		>
+			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+				<path d="M6 6l12 12M18 6L6 18" />
+			</svg>
+			<span class="sr-only">{$t.close}</span>
+		</button>
+	</div>
 </dialog>
 
 <dialog bind:this={importDialog} on:close={handleImportClose}>
 	<div class="dialog-content">
-	<h3>{$t.importTitle}</h3>
-	{#if pendingPayload}
-		<p>
-			{$t.foundList} <strong>{pendingPayload.listName}</strong> {$t.withItems}
-			{pendingPayload.items.length} {$t.itemsCount}.
-		</p>
-		<div class="field">
-			<label>{$t.importModeLabel}</label>
-			<select bind:value={importMode}>
-				<option value="new">{$t.importNew}</option>
-				<option value="merge">{$t.importMerge}</option>
-			</select>
-		</div>
-		{#if importMode === 'merge'}
+		<h3>{$t.importTitle}</h3>
+		<button
+			class="secondary icon-button icon-only dialog-close"
+			on:click={closeImport}
+			aria-label={$t.close}
+		>
+			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+				<path d="M6 6l12 12M18 6L6 18" />
+			</svg>
+			<span class="sr-only">{$t.close}</span>
+		</button>
+		{#if pendingPayload}
+			<p>
+				{$t.foundList} <strong>{pendingPayload.listName}</strong> {$t.withItems}
+				{pendingPayload.items.length} {$t.itemsCount}.
+			</p>
 			<div class="field">
-				<label>{$t.targetList}</label>
-				<select bind:value={mergeTargetId}>
-					{#each lists as list (list.id)}
-						<option value={list.id}>{list.name}</option>
+				<label>{$t.importModeLabel}</label>
+				<select bind:value={importMode}>
+					<option value="new">{$t.importNew}</option>
+					<option value="merge">{$t.importMerge}</option>
+				</select>
+			</div>
+			{#if importMode === 'merge'}
+				<div class="field">
+					<label>{$t.targetList}</label>
+					<select bind:value={mergeTargetId}>
+						{#each lists as list (list.id)}
+							<option value={list.id}>{list.name}</option>
 						{/each}
 					</select>
 				</div>
+			{/if}
+			<div class="actions actions-right">
+				<button class="icon-button icon-only" on:click={confirmImport} aria-label={$t.import}>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M12 4l6 6-1.4 1.4L13 7.8V20h-2V7.8L7.4 11.4 6 10l6-6z" />
+					</svg>
+					<span class="sr-only">{$t.import}</span>
+				</button>
+			</div>
+		{:else}
+			<video class="video" autoplay bind:this={videoEl}></video>
+			<p class="meta">{$t.scanHint}</p>
+			{#if scanError}
+				<p class="meta">{scanError}</p>
+			{/if}
 		{/if}
-		<div class="actions">
-			<button on:click={confirmImport}>{$t.import}</button>
-			<button class="secondary" on:click={closeImport}>{$t.cancel}</button>
+	</div>
+</dialog>
+
+<dialog bind:this={confirmDialog}>
+	<div class="dialog-content">
+		<h3>{$t.deleteList}</h3>
+		<p>{$t.confirmDeleteList}</p>
+		<button
+			class="secondary icon-button icon-only dialog-close"
+			on:click={cancelRemoveList}
+			aria-label={$t.close}
+		>
+			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+				<path d="M6 6l12 12M18 6L6 18" />
+			</svg>
+			<span class="sr-only">{$t.close}</span>
+		</button>
+		<div class="actions actions-right">
+			<button class="icon-button icon-only" on:click={confirmRemoveList} aria-label={$t.deleteList}>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
+				</svg>
+				<span class="sr-only">{$t.deleteList}</span>
+			</button>
 		</div>
-	{:else}
-		<video class="video" autoplay bind:this={videoEl}></video>
-		<p class="meta">{$t.scanHint}</p>
-		{#if scanError}
-			<p class="meta">{scanError}</p>
+	</div>
+</dialog>
+
+<dialog bind:this={itemDialog} on:keydown={handleItemDialogKey} on:click={handleItemDialogClick}>
+	<div class="dialog-content">
+		<h3>{formMode === 'edit' ? $t.editItem : $t.addItem}</h3>
+		<div class="field">
+			<label>{$t.productLabel}</label>
+			<input
+				placeholder={$t.selectProduct}
+				bind:this={productInputEl}
+				bind:value={productName}
+				on:input={(event) => handleProductInput((event.currentTarget as HTMLInputElement).value)}
+			/>
+		</div>
+
+		{#if showSuggestions}
+			<div class="suggestions">
+				{#each suggestions as suggestion (suggestion.id)}
+					<button
+						type="button"
+						class="suggestion"
+						tabindex="-1"
+						on:mousedown|preventDefault
+						on:click={() => selectSuggestion(suggestion)}
+					>
+						{suggestion.names[$locale] ?? suggestion.names.en}
+					</button>
+				{/each}
+			</div>
 		{/if}
-		<div class="actions">
-			<button class="secondary" on:click={closeImport}>{$t.close}</button>
+
+		<div class="field">
+			<label>{$t.categoryLabel}</label>
+			<select bind:value={categoryId}>
+				{#each categories
+					.filter((category) => category.id !== 'cat-other')
+					.concat(categories.filter((category) => category.id === 'cat-other')) as category (category.id)}
+					<option value={category.id}>
+						{categoryMap.get(category.id) ?? category.name}
+					</option>
+				{/each}
+			</select>
 		</div>
-	{/if}
-</div>
+
+		<div class="field">
+			<label>{$t.quantityLabel}</label>
+			<input type="number" min="0" step="0.1" bind:value={quantity} />
+		</div>
+
+		<div class="field">
+			<label>{$t.unitLabel}</label>
+			<select bind:value={unitId}>
+				{#each units as unit (unit.id)}
+					<option value={unit.id}>{unitMap.get(unit.id) ?? unit.short}</option>
+				{/each}
+			</select>
+		</div>
+
+		<div class="field">
+			<label>{$t.scopeLabel}</label>
+			<input bind:value={scope} placeholder={$t.scopePlaceholder} />
+		</div>
+
+		<div class="field">
+			<label>{$t.commentLabel}</label>
+			<textarea bind:value={comment} placeholder={$t.commentPlaceholder}></textarea>
+		</div>
+
+		{#if formMode === 'add'}
+			<div class="inline-row">
+				<label class="inline-checkbox">
+					<input type="checkbox" bind:checked={addAnother} />
+					{$t.addAnother}
+				</label>
+				<button class="icon-button icon-only" on:click={submitItem} aria-label={$t.addItem}>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M5 13l4 4 10-10" />
+					</svg>
+					<span class="sr-only">{$t.addItem}</span>
+				</button>
+			</div>
+		{:else}
+			<div class="actions">
+				<button class="icon-button icon-only" on:click={submitItem} aria-label={$t.editItem}>
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M5 13l4 4 10-10" />
+					</svg>
+					<span class="sr-only">{$t.editItem}</span>
+				</button>
+			</div>
+		{/if}
+
+		<button
+			class="secondary icon-button icon-only dialog-close"
+			on:click={closeItemDialog}
+			aria-label={$t.close}
+		>
+			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+				<path d="M6 6l12 12M18 6L6 18" />
+			</svg>
+			<span class="sr-only">{$t.close}</span>
+		</button>
+	</div>
 </dialog>

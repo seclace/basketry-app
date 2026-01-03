@@ -17,6 +17,8 @@ const messages = {
 		shareQr: 'Share QR',
 		importQr: 'Import QR',
 		deleteList: 'Delete list',
+		confirmDeleteList: 'Delete this list? This action cannot be undone.',
+		toggleSidebar: 'Toggle sidebar',
 		editItem: 'Edit item',
 		addItem: 'Add item',
 		productModeLabel: 'Product mode',
@@ -34,6 +36,7 @@ const messages = {
 		commentLabel: 'Comment',
 		commentPlaceholder: 'Any notes',
 		reset: 'Reset',
+		addAnother: 'Add another',
 		noItems: 'No items yet. Add your first one above.',
 		startList: 'Create a list to start building your basket.',
 		otherCategory: 'Other',
@@ -71,7 +74,8 @@ const messages = {
 			'cat-pantry': 'Pantry',
 			'cat-frozen': 'Frozen',
 			'cat-household': 'Household',
-			'cat-drinks': 'Drinks'
+			'cat-drinks': 'Drinks',
+			'cat-other': 'Other'
 		},
 		productName: {
 			'prod-milk': 'Milk',
@@ -98,6 +102,8 @@ const messages = {
 		shareQr: 'Поделиться QR',
 		importQr: 'Импорт QR',
 		deleteList: 'Удалить список',
+		confirmDeleteList: 'Удалить этот список? Действие нельзя отменить.',
+		toggleSidebar: 'Показать/скрыть сайдбар',
 		editItem: 'Редактировать',
 		addItem: 'Добавить позицию',
 		productModeLabel: 'Режим товара',
@@ -115,6 +121,7 @@ const messages = {
 		commentLabel: 'Комментарий',
 		commentPlaceholder: 'Любые заметки',
 		reset: 'Сбросить',
+		addAnother: 'Добавить ещё',
 		noItems: 'Пока нет позиций. Добавьте первую выше.',
 		startList: 'Создайте список, чтобы начать покупки.',
 		otherCategory: 'Другое',
@@ -152,7 +159,8 @@ const messages = {
 			'cat-pantry': 'Бакалея',
 			'cat-frozen': 'Заморозка',
 			'cat-household': 'Хозяйственное',
-			'cat-drinks': 'Напитки'
+			'cat-drinks': 'Напитки',
+			'cat-other': 'Другое'
 		},
 		productName: {
 			'prod-milk': 'Молоко',

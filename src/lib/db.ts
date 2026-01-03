@@ -68,8 +68,8 @@ async function getDb() {
 export async function seedDefaults() {
 	const db = await getDb();
 	const categoryCount = await db.count('categories');
+	const tx = db.transaction(['categories', 'units', 'products'], 'readwrite');
 	if (categoryCount === 0) {
-		const tx = db.transaction(['categories', 'units', 'products'], 'readwrite');
 		for (const category of defaultCategories) {
 			await tx.objectStore('categories').add(category);
 		}
@@ -79,8 +79,21 @@ export async function seedDefaults() {
 		for (const product of defaultProducts) {
 			await tx.objectStore('products').add(product);
 		}
-		await tx.done;
+	} else {
+		for (const category of defaultCategories) {
+			const exists = await tx.objectStore('categories').get(category.id);
+			if (!exists) await tx.objectStore('categories').add(category);
+		}
+		for (const unit of defaultUnits) {
+			const exists = await tx.objectStore('units').get(unit.id);
+			if (!exists) await tx.objectStore('units').add(unit);
+		}
+		for (const product of defaultProducts) {
+			const exists = await tx.objectStore('products').get(product.id);
+			if (!exists) await tx.objectStore('products').add(product);
+		}
 	}
+	await tx.done;
 
 	const listCount = await db.count('lists');
 	if (listCount === 0) {
