@@ -18,6 +18,12 @@
 		sans-serif;
 }
 
+@media (max-width: 700px) {
+	:root {
+		--gutter: 16px;
+	}
+}
+
 * {
 	box-sizing: border-box;
 }
@@ -130,6 +136,16 @@ textarea {
 	flex: 1;
 	min-height: 0;
 	margin-top: 8px;
+}
+
+@media (max-width: 700px) {
+	.main {
+		padding-bottom: 72px;
+	}
+
+	.items-scroll {
+		padding-bottom: 12px;
+	}
 }
 .sidebar-language {
 	margin-top: auto;
