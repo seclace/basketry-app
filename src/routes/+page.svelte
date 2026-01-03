@@ -33,7 +33,7 @@ import type { CatalogProduct } from '$lib/catalog';
 	let products: Product[] = [];
 	let activeListId: string | null = null;
 	let listTitle = '';
-	let sidebarOpen = true;
+	let sidebarOpen = false;
 
 	let formMode: 'add' | 'edit' = 'add';
 	let editingItemId: string | null = null;
@@ -495,7 +495,7 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 	<main class="main">
 		<header>
 			<div class="header-row">
-				<button class="secondary icon-button icon-only" on:click={toggleSidebar} aria-label={$t.toggleSidebar}>
+				<button class="secondary icon-button icon-only sidebar-toggle-main" on:click={toggleSidebar} aria-label={$t.toggleSidebar}>
 					{#if sidebarOpen}
 						<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
 							<path d="M6 6l12 12M18 6L6 18" />

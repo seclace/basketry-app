@@ -11,17 +11,12 @@
 	--border: #232a33;
 	--shadow: 0 16px 40px rgba(5, 8, 12, 0.55);
 	--gutter: 24px;
+	--main-fixed: 220px;
 	font-family:
 		'Space Grotesk',
 		system-ui,
 		-apple-system,
 		sans-serif;
-}
-
-@media (max-width: 700px) {
-	:root {
-		--gutter: 16px;
-	}
 }
 
 * {
@@ -117,6 +112,7 @@ textarea {
 .main {
 	display: flex;
 	flex-direction: column;
+	min-height: 0;
 }
 
 .sidebar {
@@ -136,17 +132,9 @@ textarea {
 	flex: 1;
 	min-height: 0;
 	margin-top: 8px;
+	max-height: calc(100vh - (var(--gutter) * 2) - var(--main-fixed));
 }
 
-@media (max-width: 700px) {
-	.main {
-		padding-bottom: 72px;
-	}
-
-	.items-scroll {
-		padding-bottom: 12px;
-	}
-}
 .sidebar-language {
 	margin-top: auto;
 }
@@ -163,6 +151,14 @@ textarea {
 	display: flex;
 	align-items: center;
 	gap: 12px;
+	position: relative;
+	padding-left: 44px;
+}
+
+.sidebar-toggle-main {
+	position: absolute;
+	left: 0;
+	top: 0;
 }
 
 h1,
@@ -408,9 +404,7 @@ textarea {
 }
 
 .add-item-bottom {
-	margin-top: 16px;
 	align-self: flex-start;
-	margin-top: auto;
 }
 .actions-right {
 	justify-content: flex-end;
