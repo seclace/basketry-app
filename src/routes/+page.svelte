@@ -507,7 +507,7 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 					{/if}
 					<span class="sr-only">{$t.toggleSidebar}</span>
 				</button>
-				<div class="items-scroll">
+			<div>
 		{#if activeListId}
 					<h2
 						class="editable-title"

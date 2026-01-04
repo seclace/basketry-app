@@ -151,6 +151,7 @@ textarea {
 	gap: 12px;
 	position: relative;
 	padding-left: 44px;
+	margin-bottom: 8px;
 }
 
 .sidebar-toggle-main {
@@ -165,6 +166,10 @@ h3 {
 	margin: 0 0 8px;
 	font-weight: 600;
 	letter-spacing: -0.02em;
+}
+
+.editable-title {
+	margin-bottom: 0;
 }
 
 .editable-title[contenteditable='true'] {
