@@ -176,7 +176,14 @@ const messages = {
 } as const;
 
 const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('basketry-locale') : null;
-const initialLocale = stored === 'ru' || stored === 'en' ? stored : 'en';
+const browserLocale =
+	typeof navigator !== 'undefined' ? navigator.language.toLowerCase().slice(0, 2) : null;
+const initialLocale =
+	stored === 'ru' || stored === 'en'
+		? stored
+		: browserLocale === 'ru' || browserLocale === 'en'
+			? browserLocale
+			: 'ru';
 
 export const locale = writable<Locale>(initialLocale);
 
