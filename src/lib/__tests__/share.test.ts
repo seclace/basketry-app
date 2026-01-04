@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSharePayload } from '../share';
+import { decodeSharePayload, encodeSharePayload } from '../share';
 
 const sample = {
 	version: 1,
@@ -18,14 +18,21 @@ const sample = {
 };
 
 describe('parseSharePayload', () => {
-	it('accepts a valid payload', () => {
-		const parsed = parseSharePayload(JSON.stringify(sample));
+	it('accepts a valid payload', async () => {
+		const parsed = await decodeSharePayload(JSON.stringify(sample));
 		expect(parsed).not.toBeNull();
 		expect(parsed?.listName).toBe('Weekly basket');
 	});
 
-	it('rejects invalid payloads', () => {
-		const parsed = parseSharePayload('{"version":2}');
+	it('rejects invalid payloads', async () => {
+		const parsed = await decodeSharePayload('{"version":2}');
 		expect(parsed).toBeNull();
+	});
+
+	it('roundtrips encoded payloads', async () => {
+		const encoded = await encodeSharePayload(sample);
+		const parsed = await decodeSharePayload(encoded);
+		expect(parsed).not.toBeNull();
+		expect(parsed?.items.length).toBe(1);
 	});
 });

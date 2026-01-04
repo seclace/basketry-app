@@ -22,7 +22,7 @@ import {
 	toggleItem,
 	updateItem
 } from '$lib/db';
-import { applySharePayload, buildSharePayload, parseSharePayload } from '$lib/share';
+import { applySharePayload, buildSharePayload, decodeSharePayload, encodeSharePayload } from '$lib/share';
 import { findCatalogByName, resolveCategoryForName, suggestCatalog } from '$lib/catalog';
 import type { CatalogProduct } from '$lib/catalog';
 
@@ -306,7 +306,8 @@ let confirmDialog: HTMLDialogElement | null = null;
 		if (!activeListId) return;
 		const payload = await buildSharePayload(activeListId);
 		if (!payload) return;
-		qrDataUrl = await QRCode.toDataURL(JSON.stringify(payload), {
+		const encoded = await encodeSharePayload(payload);
+		qrDataUrl = await QRCode.toDataURL(encoded, {
 			errorCorrectionLevel: 'M',
 			margin: 2,
 			width: 260
@@ -342,13 +343,14 @@ let confirmDialog: HTMLDialogElement | null = null;
 		try {
 			await scanner.decodeFromVideoDevice(null, videoEl, (result) => {
 				if (!result) return;
-				const parsed = parseSharePayload(result.getText());
-				if (!parsed) {
-				scanError = get(t).invalidQr;
-					return;
-				}
-				pendingPayload = parsed;
-				stopScanner();
+				void decodeSharePayload(result.getText()).then((parsed) => {
+					if (!parsed) {
+						scanError = get(t).invalidQr;
+						return;
+					}
+					pendingPayload = parsed;
+					stopScanner();
+				});
 			});
 		} catch (error) {
 				scanError = error instanceof Error ? error.message : get(t).cameraError;
