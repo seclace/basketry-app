@@ -1,4 +1,6 @@
 <script lang="ts">
+	// Copyright 2026 Vadim Goldenko
+	// SPDX-License-Identifier: Apache-2.0
 	import { onMount, tick } from 'svelte';
 import { get } from 'svelte/store';
 	import QRCode from 'qrcode';

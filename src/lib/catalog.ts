@@ -1,3 +1,6 @@
+// Copyright 2026 Vadim Goldenko
+// SPDX-License-Identifier: Apache-2.0
+
 import type { Locale } from './i18n';
 
 export interface CatalogProduct {

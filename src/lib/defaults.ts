@@ -1,3 +1,6 @@
+// Copyright 2026 Vadim Goldenko
+// SPDX-License-Identifier: Apache-2.0
+
 import type { Category, Unit, Product } from './types';
 import { catalogProducts } from './catalog';
 

@@ -1,3 +1,6 @@
+// Copyright 2026 Vadim Goldenko
+// SPDX-License-Identifier: Apache-2.0
+
 import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
 import { defaultCategories, defaultProducts, defaultUnits } from './defaults';

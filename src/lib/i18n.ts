@@ -1,3 +1,6 @@
+// Copyright 2026 Vadim Goldenko
+// SPDX-License-Identifier: Apache-2.0
+
 import { derived, writable } from 'svelte/store';
 
 export type Locale = 'en' | 'ru';
