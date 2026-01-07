@@ -59,6 +59,13 @@ let confirmDialog: HTMLDialogElement | null = null;
 	let videoEl: HTMLVideoElement | null = null;
 	let scanner: BrowserQRCodeReader | null = null;
 	let addAnother = true;
+	type GroupedEntry = {
+		id: string;
+		items: Item[];
+		activeCount: number;
+	};
+	let grouped: Record<string, Item[]> = {};
+	let groupedEntries: GroupedEntry[] = [];
 
 	const resetForm = () => {
 		formMode = 'add';
@@ -232,22 +239,13 @@ let confirmDialog: HTMLDialogElement | null = null;
 		const keepAdding = formMode === 'add' && addAnother;
 		const name = productName.trim();
 		if (!name) return;
-		let chosenCategoryId = categoryId || categories[0]?.id;
+		let chosenCategoryId = categoryId || categories[0]?.id || otherCategoryId;
 		let chosenUnitId = unitId || units[0]?.id;
 		const safeQuantity = Number(quantity) || 0;
 
-		const matchedCatalog = findCatalogByName(name, $locale);
-		if (matchedCatalog) {
-			chosenCategoryId = matchedCatalog.categoryId;
-			chosenUnitId = matchedCatalog.unitId;
-		}
-		const resolvedCategory = resolveCategoryForName(name, $locale);
-		if (resolvedCategory) {
-			chosenCategoryId = resolvedCategory;
-		} else if (otherCategoryId) {
+		if (!chosenCategoryId && otherCategoryId) {
 			chosenCategoryId = otherCategoryId;
 		}
-
 		const existing = await findProductByName(name);
 		const productId = existing
 			? existing.id
@@ -420,25 +418,29 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 	$: productNameMap = new Map(
 		products.map((product) => [product.id, $t.productName?.[product.id] ?? product.name])
 	);
+	$: totalItemCount = items.length;
+	$: activeItemCount = items.reduce((count, item) => (item.purchased ? count : count + 1), 0);
+	$: itemStatsLabel = `${activeItemCount} / ${totalItemCount} ${$t.itemsCount}`;
 	$: grouped = items.reduce<Record<string, Item[]>>((acc, item) => {
 		(acc[item.categoryId] ||= []).push(item);
 		return acc;
 	}, {});
-		$: groupedEntries = Object.entries(grouped)
-			.map(([groupId, groupItems]) => {
-				const items = [...groupItems].sort((a, b) => {
-					if (a.purchased !== b.purchased) return a.purchased ? 1 : -1;
-					const nameA = productNameMap.get(a.productId) ?? a.name;
-					const nameB = productNameMap.get(b.productId) ?? b.name;
-					return nameA.localeCompare(nameB);
-				});
-				return [groupId, items] as [string, Item[]];
-			})
-			.sort((a, b) => {
-				const nameA = categoryMap.get(a[0]) ?? '';
-				const nameB = categoryMap.get(b[0]) ?? '';
+	$: groupedEntries = Object.entries(grouped)
+		.map(([groupId, groupItems]) => {
+			const items = [...groupItems].sort((a, b) => {
+				if (a.purchased !== b.purchased) return a.purchased ? 1 : -1;
+				const nameA = productNameMap.get(a.productId) ?? a.name;
+				const nameB = productNameMap.get(b.productId) ?? b.name;
 				return nameA.localeCompare(nameB);
 			});
+			const activeCount = items.reduce((count, item) => (item.purchased ? count : count + 1), 0);
+			return { id: groupId, items, activeCount };
+		})
+		.sort((a, b) => {
+			const nameA = categoryMap.get(a.id) ?? '';
+			const nameB = categoryMap.get(b.id) ?? '';
+			return nameA.localeCompare(nameB);
+		});
 </script>
 
 <div class={`app ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
@@ -519,8 +521,8 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 					{/if}
 					<span class="sr-only">{$t.toggleSidebar}</span>
 				</button>
-			<div>
-		{#if activeListId}
+				<div class="list-title">
+				{#if activeListId}
 					<h2
 						class="editable-title"
 						contenteditable="true"
@@ -534,8 +536,8 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 					</h2>
 				{:else}
 					<h2>{$t.selectList}</h2>
-				{/if}
-			</div>
+						{/if}
+				</div>
 			<div class="actions list-actions">
 				<button
 					class="secondary icon-button icon-only"
@@ -561,7 +563,7 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 				</button>
 			</div>
 		</header>
-		<p>{items.length} {$t.itemsCount}</p>
+		<p class="item-stats" aria-live="polite" aria-label={itemStatsLabel}>{itemStatsLabel}</p>
 
 		<div class="items-scroll">
 		{#if activeListId}
@@ -569,13 +571,19 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 				<p>{$t.noItems}</p>
 			{/if}
 
-			{#each groupedEntries as [groupId, groupItems] (groupId)}
+			{#each groupedEntries as group (group.id)}
 				<section class="category-group">
 					<div class="category-header">
-						<strong>{categoryMap.get(groupId) ?? $t.otherCategory}</strong>
-						<span class="meta">{groupItems.length} {$t.itemsCount}</span>
+						<strong>{categoryMap.get(group.id) ?? $t.otherCategory}</strong>
+						<span
+							class="meta category-stats"
+							aria-live="polite"
+							aria-label={`${categoryMap.get(group.id) ?? $t.otherCategory}: ${$t.activeItemsLabel} ${group.activeCount}/${group.items.length}. ${$t.totalItemsLabel}: ${group.items.length} ${$t.itemsCount}`}
+						>
+							<span aria-hidden="true">{group.activeCount} / {group.items.length} {$t.itemsCount}</span>
+						</span>
 					</div>
-					{#each groupItems as item (item.id)}
+					{#each group.items as item (item.id)}
 						<div class={`item-row ${item.purchased ? 'done' : ''}`}>
 							<input
 								type="checkbox"

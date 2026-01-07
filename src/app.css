@@ -133,6 +133,32 @@ textarea {
 	margin-top: 8px;
 }
 
+.item-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 0 0 16px;
+	color: var(--muted);
+	font-size: 0.95rem;
+}
+
+.item-stats span {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 6px;
+}
+
+.category-stats {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 6px;
+}
+
+.category-stats span {
+	display: inline-flex;
+	align-items: baseline;
+}
+
 .sidebar-language {
 	margin-top: auto;
 }
@@ -154,6 +180,11 @@ textarea {
 	margin-bottom: 8px;
 }
 
+.list-title {
+	flex: 1;
+	min-width: 0;
+}
+
 .sidebar-toggle-main {
 	position: absolute;
 	left: 0;
@@ -170,6 +201,8 @@ h3 {
 
 .editable-title {
 	margin-bottom: 0;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 
 .editable-title[contenteditable='true'] {
