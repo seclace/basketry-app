@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 import { get } from 'svelte/store';
 	import QRCode from 'qrcode';
 	import { BrowserQRCodeReader } from '@zxing/browser';
@@ -60,6 +60,10 @@ let confirmDialog: HTMLDialogElement | null = null;
 	let scanner: BrowserQRCodeReader | null = null;
 	let addAnother = true;
 	let theme: 'dark' | 'light' = 'dark';
+	let isLangOpen = false;
+	let isThemeOpen = false;
+	let langDropdown: HTMLDivElement | null = null;
+	let themeDropdown: HTMLDivElement | null = null;
 	type GroupedEntry = {
 		id: string;
 		items: Item[];
@@ -113,6 +117,51 @@ let confirmDialog: HTMLDialogElement | null = null;
 		if (typeof localStorage !== 'undefined') {
 			localStorage.setItem('basketry-theme', value);
 		}
+	};
+
+	const toggleLangDropdown = () => {
+		isLangOpen = !isLangOpen;
+		if (isLangOpen) isThemeOpen = false;
+	};
+
+	const toggleThemeDropdown = () => {
+		isThemeOpen = !isThemeOpen;
+		if (isThemeOpen) isLangOpen = false;
+	};
+
+	const closeDropdowns = () => {
+		isLangOpen = false;
+		isThemeOpen = false;
+	};
+
+	const handleDropdownTriggerKey = (event: KeyboardEvent, target: 'lang' | 'theme') => {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			if (target === 'lang') toggleLangDropdown();
+			if (target === 'theme') toggleThemeDropdown();
+		}
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			closeDropdowns();
+		}
+	};
+
+	const selectLocale = (value: 'en' | 'ru') => {
+		$locale = value;
+		closeDropdowns();
+	};
+
+	const selectTheme = (value: 'dark' | 'light') => {
+		setTheme(value);
+		closeDropdowns();
+	};
+
+	const handleDocumentClick = (event: MouseEvent) => {
+		const target = event.target as Node | null;
+		if (!target) return;
+		if (langDropdown && langDropdown.contains(target)) return;
+		if (themeDropdown && themeDropdown.contains(target)) return;
+		closeDropdowns();
 	};
 
 	const loadItems = async () => {
@@ -427,6 +476,14 @@ let confirmDialog: HTMLDialogElement | null = null;
 		await loadAll();
 	});
 
+	onMount(() => {
+		document.addEventListener('click', handleDocumentClick);
+	});
+
+	onDestroy(() => {
+		document.removeEventListener('click', handleDocumentClick);
+	});
+
 	$: categoryMap = new Map(
 		categories.map((category) => [category.id, $t.categoryName?.[category.id] ?? category.name])
 	);
@@ -481,7 +538,7 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 				{/if}
 				<span class="sr-only">{$t.toggleSidebar}</span>
 			</button>
-			<h1>{$t.appName}</h1>
+			<h1 class="page-title">{$t.appName}</h1>
 			<button class="secondary icon-button icon-only" on:click={openImport} aria-label={$t.importQr}>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M12 20l-6-6 1.4-1.4L11 16.2V4h2v12.2l3.6-3.6L18 14l-6 6z" />
@@ -509,19 +566,83 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 		</div>
 		</div>
 
-		<div class="field sidebar-language">
-			<label for="lang">{$t.language}</label>
-			<select id="lang" bind:value={$locale}>
-				<option value="en">English</option>
-				<option value="ru">Русский</option>
-			</select>
+		<div class="field sidebar-language" bind:this={langDropdown}>
+			<label id="lang-label">{$t.language}</label>
+			<button
+				class="dropdown-trigger"
+				type="button"
+				aria-haspopup="listbox"
+				aria-expanded={isLangOpen}
+				aria-labelledby="lang-label"
+				on:click={toggleLangDropdown}
+				on:keydown={(event) => handleDropdownTriggerKey(event, 'lang')}
+			>
+				<span>{$locale === 'ru' ? 'Русский' : 'English'}</span>
+				<svg class="dropdown-caret" viewBox="0 0 24 24" aria-hidden="true">
+					<path d="M6 9l6 6 6-6" />
+				</svg>
+			</button>
+			{#if isLangOpen}
+				<div class="dropdown-menu" role="listbox" aria-labelledby="lang-label">
+					<button
+						type="button"
+						role="option"
+						class={`dropdown-option ${$locale === 'en' ? 'active' : ''}`}
+						aria-selected={$locale === 'en'}
+						on:click={() => selectLocale('en')}
+					>
+						English
+					</button>
+					<button
+						type="button"
+						role="option"
+						class={`dropdown-option ${$locale === 'ru' ? 'active' : ''}`}
+						aria-selected={$locale === 'ru'}
+						on:click={() => selectLocale('ru')}
+					>
+						Русский
+					</button>
+				</div>
+			{/if}
 		</div>
-		<div class="field sidebar-theme">
-			<label for="theme">{$t.themeLabel}</label>
-			<select id="theme" bind:value={theme} on:change={(event) => setTheme((event.currentTarget as HTMLSelectElement).value as 'dark' | 'light')}>
-				<option value="dark">{$t.themeDark}</option>
-				<option value="light">{$t.themeLight}</option>
-			</select>
+		<div class="field sidebar-theme" bind:this={themeDropdown}>
+			<label id="theme-label">{$t.themeLabel}</label>
+			<button
+				class="dropdown-trigger"
+				type="button"
+				aria-haspopup="listbox"
+				aria-expanded={isThemeOpen}
+				aria-labelledby="theme-label"
+				on:click={toggleThemeDropdown}
+				on:keydown={(event) => handleDropdownTriggerKey(event, 'theme')}
+			>
+				<span>{theme === 'light' ? $t.themeLight : $t.themeDark}</span>
+				<svg class="dropdown-caret" viewBox="0 0 24 24" aria-hidden="true">
+					<path d="M6 9l6 6 6-6" />
+				</svg>
+			</button>
+			{#if isThemeOpen}
+				<div class="dropdown-menu" role="listbox" aria-labelledby="theme-label">
+					<button
+						type="button"
+						role="option"
+						class={`dropdown-option ${theme === 'dark' ? 'active' : ''}`}
+						aria-selected={theme === 'dark'}
+						on:click={() => selectTheme('dark')}
+					>
+						{$t.themeDark}
+					</button>
+					<button
+						type="button"
+						role="option"
+						class={`dropdown-option ${theme === 'light' ? 'active' : ''}`}
+						aria-selected={theme === 'light'}
+						on:click={() => selectTheme('light')}
+					>
+						{$t.themeLight}
+					</button>
+				</div>
+			{/if}
 		</div>
 
 		<button class="icon-button icon-only full-width create-list-button" on:click={addList} aria-label={$t.createList}>

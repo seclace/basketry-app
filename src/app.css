@@ -215,6 +215,10 @@ h3 {
 	letter-spacing: -0.02em;
 }
 
+.page-title {
+	flex: 1;
+}
+
 .editable-title {
 	margin-bottom: 0;
 	overflow-wrap: anywhere;
@@ -352,6 +356,67 @@ textarea {
 	border: 1px solid var(--border);
 	border-radius: 12px;
 	padding: 10px 12px;
+}
+
+.dropdown-trigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	background: var(--panel-alt);
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	padding: 10px 12px;
+	text-align: left;
+	color: var(--text);
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease;
+}
+
+.dropdown-trigger:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.dropdown-caret {
+	width: 16px;
+	height: 16px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	transition: transform 0.2s ease;
+}
+
+.dropdown-menu {
+	margin-top: 8px;
+	display: grid;
+	gap: 6px;
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	padding: 6px;
+	box-shadow: var(--shadow);
+}
+
+.dropdown-option {
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	padding: 8px 10px;
+	text-align: left;
+	color: var(--text);
+	cursor: pointer;
+}
+
+.dropdown-option:hover {
+	background: var(--panel-alt);
+}
+
+.dropdown-option.active {
+	border-color: var(--accent);
+	background: rgba(86, 194, 255, 0.12);
+	color: var(--text);
 }
 
 textarea {
