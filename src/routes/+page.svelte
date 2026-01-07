@@ -2,31 +2,36 @@
 	// Copyright 2026 Vadim Goldenko
 	// SPDX-License-Identifier: Apache-2.0
 	import { onMount, tick } from 'svelte';
-import { get } from 'svelte/store';
+	import { get } from 'svelte/store';
 	import QRCode from 'qrcode';
 	import { BrowserQRCodeReader } from '@zxing/browser';
-import type { Category, Item, Product, ShoppingList, Unit, SharePayload } from '$lib/types';
-import { locale, t } from '$lib/i18n';
-import {
-	createItem,
-	createList,
-	createProduct,
-	deleteItem,
-	deleteList,
-	findProductByName,
-	getCategories,
-	getItemsByList,
-	getLists,
-	getProducts,
-	getUnits,
-	renameList,
-	seedDefaults,
-	toggleItem,
-	updateItem
-} from '$lib/db';
-import { applySharePayload, buildSharePayload, decodeSharePayload, encodeSharePayload } from '$lib/share';
-import { findCatalogByName, resolveCategoryForName, suggestCatalog } from '$lib/catalog';
-import type { CatalogProduct } from '$lib/catalog';
+	import type { Category, Item, Product, ShoppingList, Unit, SharePayload } from '$lib/types';
+	import { locale, t } from '$lib/i18n';
+	import {
+		createItem,
+		createList,
+		createProduct,
+		deleteItem,
+		deleteList,
+		findProductByName,
+		getCategories,
+		getItemsByList,
+		getLists,
+		getProducts,
+		getUnits,
+		renameList,
+		seedDefaults,
+		toggleItem,
+		updateItem
+	} from '$lib/db';
+	import {
+		applySharePayload,
+		buildSharePayload,
+		decodeSharePayload,
+		encodeSharePayload
+	} from '$lib/share';
+	import { findCatalogByName, resolveCategoryForName, suggestCatalog } from '$lib/catalog';
+	import type { CatalogProduct } from '$lib/catalog';
 
 	let lists: ShoppingList[] = [];
 	let items: Item[] = [];
@@ -45,13 +50,13 @@ import type { CatalogProduct } from '$lib/catalog';
 	let categoryId = '';
 	let comment = '';
 	let scope = '';
-let suggestions: CatalogProduct[] = [];
-let showSuggestions = false;
+	let suggestions: CatalogProduct[] = [];
+	let showSuggestions = false;
 
 	let exportDialog: HTMLDialogElement | null = null;
 	let importDialog: HTMLDialogElement | null = null;
 	let itemDialog: HTMLDialogElement | null = null;
-let confirmDialog: HTMLDialogElement | null = null;
+	let confirmDialog: HTMLDialogElement | null = null;
 	let productInputEl: HTMLInputElement | null = null;
 	let qrDataUrl = '';
 	let scanError = '';
@@ -459,11 +464,7 @@ let confirmDialog: HTMLDialogElement | null = null;
 		const existing = await findProductByName(name);
 		const productId = existing
 			? existing.id
-			: (await createProduct(
-					name,
-					chosenCategoryId ?? otherCategoryId,
-					chosenUnitId ?? unitId
-			  )).id;
+			: (await createProduct(name, chosenCategoryId ?? otherCategoryId, chosenUnitId ?? unitId)).id;
 
 		if (formMode === 'edit' && editingItemId) {
 			await updateItem(editingItemId, {
@@ -561,14 +562,14 @@ let confirmDialog: HTMLDialogElement | null = null;
 				});
 			});
 		} catch (error) {
-				scanError = error instanceof Error ? error.message : get(t).cameraError;
+			scanError = error instanceof Error ? error.message : get(t).cameraError;
 		}
 	};
 
 	const closeImport = () => {
 		stopScanner();
 		pendingPayload = null;
-				scanError = '';
+		scanError = '';
 		importDialog?.close();
 	};
 
@@ -629,10 +630,8 @@ let confirmDialog: HTMLDialogElement | null = null;
 	$: categoryMap = new Map(
 		categories.map((category) => [category.id, $t.categoryName?.[category.id] ?? category.name])
 	);
-$: otherCategoryId = categories.find((category) => category.id === 'cat-other')?.id ?? '';
-	$: unitMap = new Map(
-		units.map((unit) => [unit.id, $t.unitShort?.[unit.id] ?? unit.short])
-	);
+	$: otherCategoryId = categories.find((category) => category.id === 'cat-other')?.id ?? '';
+	$: unitMap = new Map(units.map((unit) => [unit.id, $t.unitShort?.[unit.id] ?? unit.short]));
 	$: productNameMap = new Map(
 		products.map((product) => [product.id, $t.productName?.[product.id] ?? product.name])
 	);
@@ -661,7 +660,7 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 		});
 </script>
 
-<div class={`app ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
+<div class={`app ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}>
 	<aside class="sidebar">
 		<header>
 			<button
@@ -670,18 +669,36 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 				aria-label={$t.toggleSidebar}
 			>
 				{#if sidebarOpen}
-					<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+					<svg
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+					>
 						<path d="M6 6l12 12M18 6L6 18" />
 					</svg>
 				{:else}
-					<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+					<svg
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+					>
 						<path d="M4 7h16M4 12h16M4 17h16" />
 					</svg>
 				{/if}
 				<span class="sr-only">{$t.toggleSidebar}</span>
 			</button>
 			<h1 class="page-title">{$t.appName}</h1>
-			<button class="secondary icon-button icon-only" on:click={openImport} aria-label={$t.importQr}>
+			<button
+				class="secondary icon-button icon-only"
+				on:click={openImport}
+				aria-label={$t.importQr}
+			>
 				<svg viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M12 20l-6-6 1.4-1.4L11 16.2V4h2v12.2l3.6-3.6L18 14l-6 6z" />
 				</svg>
@@ -690,22 +707,22 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 		</header>
 
 		<div class="sidebar-list-scroll">
-		<div class="list">
-			{#each lists as list (list.id)}
-				<div
-					class={`list-item ${list.id === activeListId ? 'active' : ''}`}
-					role="button"
-					tabindex="0"
-					on:click={() => selectList(list.id)}
-					on:keydown={(event) => event.key === 'Enter' && selectList(list.id)}
-				>
-					<div>
-						<strong>{list.name}</strong>
-						<div class="meta">{list.id.slice(0, 6)}</div>
+			<div class="list">
+				{#each lists as list (list.id)}
+					<div
+						class={`list-item ${list.id === activeListId ? 'active' : ''}`}
+						role="button"
+						tabindex="0"
+						on:click={() => selectList(list.id)}
+						on:keydown={(event) => event.key === 'Enter' && selectList(list.id)}
+					>
+						<div>
+							<strong>{list.name}</strong>
+							<div class="meta">{list.id.slice(0, 6)}</div>
+						</div>
 					</div>
-				</div>
-			{/each}
-		</div>
+				{/each}
+			</div>
 		</div>
 
 		<div class="field sidebar-language" bind:this={langDropdown}>
@@ -799,7 +816,11 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 			{/if}
 		</div>
 
-		<button class="icon-button icon-only full-width create-list-button" on:click={addList} aria-label={$t.createList}>
+		<button
+			class="icon-button icon-only full-width create-list-button"
+			on:click={addList}
+			aria-label={$t.createList}
+		>
 			<svg viewBox="0 0 24 24" aria-hidden="true">
 				<path d="M11 5h2v14h-2zM5 11h14v2H5z" />
 			</svg>
@@ -810,124 +831,156 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 	<main class="main">
 		<header>
 			<div class="header-row">
-				<button class="secondary icon-button icon-only sidebar-toggle-main" on:click={toggleSidebar} aria-label={$t.toggleSidebar}>
+				<button
+					class="secondary icon-button icon-only sidebar-toggle-main"
+					on:click={toggleSidebar}
+					aria-label={$t.toggleSidebar}
+				>
 					{#if sidebarOpen}
-						<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+						<svg
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+						>
 							<path d="M6 6l12 12M18 6L6 18" />
 						</svg>
 					{:else}
-						<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+						<svg
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+						>
 							<path d="M4 7h16M4 12h16M4 17h16" />
 						</svg>
 					{/if}
 					<span class="sr-only">{$t.toggleSidebar}</span>
 				</button>
 				<div class="list-title">
-				{#if activeListId}
-					<h2
-						class="editable-title"
-						contenteditable="true"
-						spellcheck="false"
-						data-placeholder={$t.listNameLabel}
-						on:input={handleListTitleInput}
-						on:blur={saveListName}
-						on:keydown={handleListTitleKey}
-					>
-						{listTitle}
-					</h2>
-				{:else}
-					<h2>{$t.selectList}</h2>
-						{/if}
+					{#if activeListId}
+						<h2
+							class="editable-title"
+							contenteditable="true"
+							spellcheck="false"
+							data-placeholder={$t.listNameLabel}
+							on:input={handleListTitleInput}
+							on:blur={saveListName}
+							on:keydown={handleListTitleKey}
+						>
+							{listTitle}
+						</h2>
+					{:else}
+						<h2>{$t.selectList}</h2>
+					{/if}
 				</div>
-			<div class="actions list-actions">
-				<button
-					class="secondary icon-button icon-only"
-					on:click={openExport}
-					disabled={!activeListId}
-					aria-label={$t.shareQr}
-				>
-					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M6 12l6-6 6 6-1.4 1.4L13 9.8V20h-2V9.8L7.4 13.4 6 12z" />
-					</svg>
-					<span class="sr-only">{$t.shareQr}</span>
-				</button>
-				<button
-					class="danger icon-button icon-only"
-					on:click={removeList}
-					disabled={!activeListId}
-					aria-label={$t.deleteList}
-				>
-					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
-					</svg>
-					<span class="sr-only">{$t.deleteList}</span>
-				</button>
+				<div class="actions list-actions">
+					<button
+						class="secondary icon-button icon-only"
+						on:click={openExport}
+						disabled={!activeListId}
+						aria-label={$t.shareQr}
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M6 12l6-6 6 6-1.4 1.4L13 9.8V20h-2V9.8L7.4 13.4 6 12z" />
+						</svg>
+						<span class="sr-only">{$t.shareQr}</span>
+					</button>
+					<button
+						class="danger icon-button icon-only"
+						on:click={removeList}
+						disabled={!activeListId}
+						aria-label={$t.deleteList}
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
+						</svg>
+						<span class="sr-only">{$t.deleteList}</span>
+					</button>
+				</div>
 			</div>
 		</header>
 		<p class="item-stats" aria-live="polite" aria-label={itemStatsLabel}>{itemStatsLabel}</p>
 
 		<div class="items-scroll">
-		{#if activeListId}
-			{#if groupedEntries.length === 0}
-				<p>{$t.noItems}</p>
-			{/if}
+			{#if activeListId}
+				{#if groupedEntries.length === 0}
+					<p>{$t.noItems}</p>
+				{/if}
 
-			{#each groupedEntries as group (group.id)}
-				<section class="category-group">
-					<div class="category-header">
-						<strong>{categoryMap.get(group.id) ?? $t.otherCategory}</strong>
-						<span
-							class="meta category-stats"
-							aria-live="polite"
-							aria-label={`${categoryMap.get(group.id) ?? $t.otherCategory}: ${$t.activeItemsLabel} ${group.activeCount}/${group.items.length}. ${$t.totalItemsLabel}: ${group.items.length} ${$t.itemsCount(group.items.length)}`}
-						>
-							<span aria-hidden="true">{group.activeCount} / {group.items.length} {$t.itemsCount(group.items.length)}</span>
-						</span>
-					</div>
-					{#each group.items as item (item.id)}
-						<div class={`item-row ${item.purchased ? 'done' : ''}`}>
-							<input
-								type="checkbox"
-								checked={item.purchased}
-								on:change={(event) =>
-									togglePurchased(
-										item.id,
-										(event.currentTarget as HTMLInputElement).checked
-									)}
-							/>
+				{#each groupedEntries as group (group.id)}
+					<section class="category-group">
+						<div class="category-header">
+							<strong>{categoryMap.get(group.id) ?? $t.otherCategory}</strong>
+							<span
+								class="meta category-stats"
+								aria-live="polite"
+								aria-label={`${categoryMap.get(group.id) ?? $t.otherCategory}: ${$t.activeItemsLabel} ${group.activeCount}/${group.items.length}. ${$t.totalItemsLabel}: ${group.items.length} ${$t.itemsCount(group.items.length)}`}
+							>
+								<span aria-hidden="true"
+									>{group.activeCount} / {group.items.length}
+									{$t.itemsCount(group.items.length)}</span
+								>
+							</span>
+						</div>
+						{#each group.items as item (item.id)}
+							<div class={`item-row ${item.purchased ? 'done' : ''}`}>
+								<input
+									type="checkbox"
+									checked={item.purchased}
+									on:change={(event) =>
+										togglePurchased(item.id, (event.currentTarget as HTMLInputElement).checked)}
+								/>
 								<div>
-									<strong class="item-title">{productNameMap.get(item.productId) ?? item.name}</strong>
-								<div class="meta">
-									{item.quantity} {unitMap.get(item.unitId) ?? ''}
-									{#if item.scope}
-										 · {item.scope}
+									<strong class="item-title"
+										>{productNameMap.get(item.productId) ?? item.name}</strong
+									>
+									<div class="meta">
+										{item.quantity}
+										{unitMap.get(item.unitId) ?? ''}
+										{#if item.scope}
+											· {item.scope}
+										{/if}
+									</div>
+									{#if item.comment}
+										<div class="meta">{item.comment}</div>
 									{/if}
 								</div>
-								{#if item.comment}
-									<div class="meta">{item.comment}</div>
-								{/if}
+								<div class="actions">
+									<button
+										class="ghost icon-button icon-only"
+										on:click={() => startEdit(item)}
+										aria-label={$t.edit}
+									>
+										<svg viewBox="0 0 24 24" aria-hidden="true">
+											<path
+												d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
+											/>
+										</svg>
+										<span class="sr-only">{$t.edit}</span>
+									</button>
+									<button
+										class="ghost icon-button icon-only"
+										on:click={() => removeItem(item.id)}
+										aria-label={$t.remove}
+									>
+										<svg viewBox="0 0 24 24" aria-hidden="true">
+											<path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
+										</svg>
+										<span class="sr-only">{$t.remove}</span>
+									</button>
+								</div>
 							</div>
-							<div class="actions">
-								<button class="ghost icon-button icon-only" on:click={() => startEdit(item)} aria-label={$t.edit}>
-									<svg viewBox="0 0 24 24" aria-hidden="true">
-										<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" />
-									</svg>
-									<span class="sr-only">{$t.edit}</span>
-								</button>
-								<button class="ghost icon-button icon-only" on:click={() => removeItem(item.id)} aria-label={$t.remove}>
-									<svg viewBox="0 0 24 24" aria-hidden="true">
-										<path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z" />
-									</svg>
-									<span class="sr-only">{$t.remove}</span>
-								</button>
-							</div>
-						</div>
-					{/each}
-				</section>
-			{/each}
-		{:else}
-			<p>{$t.startList}</p>
-		{/if}
+						{/each}
+					</section>
+				{/each}
+			{:else}
+				<p>{$t.startList}</p>
+			{/if}
 		</div>
 		<button
 			class="icon-button icon-only add-item-bottom full-width"
@@ -955,7 +1008,14 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 			on:click={() => exportDialog?.close()}
 			aria-label={$t.close}
 		>
-			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+			<svg
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+			>
 				<path d="M6 6l12 12M18 6L6 18" />
 			</svg>
 			<span class="sr-only">{$t.close}</span>
@@ -971,15 +1031,24 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 			on:click={closeImport}
 			aria-label={$t.close}
 		>
-			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+			<svg
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+			>
 				<path d="M6 6l12 12M18 6L6 18" />
 			</svg>
 			<span class="sr-only">{$t.close}</span>
 		</button>
 		{#if pendingPayload}
 			<p>
-				{$t.foundList} <strong>{pendingPayload.listName}</strong> {$t.withItems}
-				{pendingPayload.items.length} {$t.itemsCount(pendingPayload.items.length)}.
+				{$t.foundList} <strong>{pendingPayload.listName}</strong>
+				{$t.withItems}
+				{pendingPayload.items.length}
+				{$t.itemsCount(pendingPayload.items.length)}.
 			</p>
 			<div class="field">
 				<label>{$t.importModeLabel}</label>
@@ -1025,7 +1094,14 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 			on:click={cancelRemoveList}
 			aria-label={$t.close}
 		>
-			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+			<svg
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+			>
 				<path d="M6 6l12 12M18 6L6 18" />
 			</svg>
 			<span class="sr-only">{$t.close}</span>
@@ -1136,7 +1212,14 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 			on:click={closeItemDialog}
 			aria-label={$t.close}
 		>
-			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+			<svg
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+			>
 				<path d="M6 6l12 12M18 6L6 18" />
 			</svg>
 			<span class="sr-only">{$t.close}</span>
