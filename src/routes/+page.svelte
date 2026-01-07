@@ -424,11 +424,21 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 		(acc[item.categoryId] ||= []).push(item);
 		return acc;
 	}, {});
-	$: groupedEntries = Object.entries(grouped).sort((a, b) => {
-		const nameA = categoryMap.get(a[0]) ?? '';
-		const nameB = categoryMap.get(b[0]) ?? '';
-		return nameA.localeCompare(nameB);
-	});
+		$: groupedEntries = Object.entries(grouped)
+			.map(([groupId, groupItems]) => {
+				const items = [...groupItems].sort((a, b) => {
+					if (a.purchased !== b.purchased) return a.purchased ? 1 : -1;
+					const nameA = productNameMap.get(a.productId) ?? a.name;
+					const nameB = productNameMap.get(b.productId) ?? b.name;
+					return nameA.localeCompare(nameB);
+				});
+				return [groupId, items] as [string, Item[]];
+			})
+			.sort((a, b) => {
+				const nameA = categoryMap.get(a[0]) ?? '';
+				const nameB = categoryMap.get(b[0]) ?? '';
+				return nameA.localeCompare(nameB);
+			});
 </script>
 
 <div class={`app ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
