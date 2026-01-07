@@ -59,6 +59,7 @@ let confirmDialog: HTMLDialogElement | null = null;
 	let videoEl: HTMLVideoElement | null = null;
 	let scanner: BrowserQRCodeReader | null = null;
 	let addAnother = true;
+	let theme: 'dark' | 'light' = 'dark';
 	type GroupedEntry = {
 		id: string;
 		items: Item[];
@@ -95,6 +96,23 @@ let confirmDialog: HTMLDialogElement | null = null;
 		mergeTargetId = activeListId ?? '';
 		await loadItems();
 		resetForm();
+	};
+
+	const getInitialTheme = () => {
+		if (typeof window === 'undefined') return 'dark';
+		const stored = localStorage.getItem('basketry-theme');
+		if (stored === 'light' || stored === 'dark') return stored;
+		return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+	};
+
+	const setTheme = (value: 'dark' | 'light') => {
+		theme = value;
+		if (typeof document !== 'undefined') {
+			document.documentElement.dataset.theme = value;
+		}
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem('basketry-theme', value);
+		}
 	};
 
 	const loadItems = async () => {
@@ -404,6 +422,7 @@ let confirmDialog: HTMLDialogElement | null = null;
 	};
 
 	onMount(async () => {
+		setTheme(getInitialTheme());
 		await seedDefaults();
 		await loadAll();
 	});
@@ -495,6 +514,13 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 			<select id="lang" bind:value={$locale}>
 				<option value="en">English</option>
 				<option value="ru">Русский</option>
+			</select>
+		</div>
+		<div class="field sidebar-theme">
+			<label for="theme">{$t.themeLabel}</label>
+			<select id="theme" bind:value={theme} on:change={(event) => setTheme((event.currentTarget as HTMLSelectElement).value as 'dark' | 'light')}>
+				<option value="dark">{$t.themeDark}</option>
+				<option value="light">{$t.themeLight}</option>
 			</select>
 		</div>
 

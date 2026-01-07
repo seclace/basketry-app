@@ -12,11 +12,27 @@
 	--shadow: 0 16px 40px rgba(5, 8, 12, 0.55);
 	--gutter: 24px;
 	--main-fixed: 220px;
+	--app-background: radial-gradient(circle at top, #131826 0%, #0b0d10 55%);
 	font-family:
 		'Space Grotesk',
 		system-ui,
 		-apple-system,
 		sans-serif;
+}
+
+:root[data-theme='light'] {
+	color-scheme: light;
+	--bg: #f5f6f8;
+	--panel: #ffffff;
+	--panel-alt: #f0f2f5;
+	--text: #1b1f24;
+	--muted: #5e6673;
+	--accent: #0b6ff2;
+	--accent-strong: #085ed0;
+	--danger: #d64545;
+	--border: #e1e5ea;
+	--shadow: 0 16px 40px rgba(15, 20, 30, 0.12);
+	--app-background: radial-gradient(circle at top, #ffffff 0%, #eef1f6 55%);
 }
 
 * {
@@ -25,7 +41,7 @@
 
 body {
 	margin: 0;
-	background: radial-gradient(circle at top, #131826 0%, #0b0d10 55%);
+	background: var(--app-background);
 	color: var(--text);
 	min-height: 100vh;
 	overflow: hidden;
