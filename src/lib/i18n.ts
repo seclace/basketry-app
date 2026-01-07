@@ -2,6 +2,14 @@ import { derived, writable } from 'svelte/store';
 
 export type Locale = 'en' | 'ru';
 
+const pluralizeRu = (count: number, forms: [string, string, string]) => {
+	const mod10 = count % 10;
+	const mod100 = count % 100;
+	if (mod10 === 1 && mod100 !== 11) return forms[0];
+	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
+	return forms[2];
+};
+
 const messages = {
 	en: {
 		appName: 'Basketry',
@@ -10,7 +18,7 @@ const messages = {
 		newListPlaceholder: 'Weekend run',
 		createList: 'Create list',
 		open: 'Open',
-		itemsCount: 'items',
+		itemsCount: (count: number) => (count === 1 ? 'item' : 'items'),
 		activeItemsLabel: 'Active',
 		totalItemsLabel: 'Total',
 		themeLabel: 'Theme',
@@ -100,7 +108,7 @@ const messages = {
 		newListPlaceholder: 'Покупки на выходные',
 		createList: 'Создать список',
 		open: 'Открыть',
-		itemsCount: 'позиций',
+		itemsCount: (count: number) => pluralizeRu(count, ['позиция', 'позиции', 'позиций']),
 		activeItemsLabel: 'Активно',
 		totalItemsLabel: 'Всего',
 		themeLabel: 'Тема',

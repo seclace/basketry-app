@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 import { get } from 'svelte/store';
 	import QRCode from 'qrcode';
 	import { BrowserQRCodeReader } from '@zxing/browser';
@@ -60,10 +60,21 @@ let confirmDialog: HTMLDialogElement | null = null;
 	let scanner: BrowserQRCodeReader | null = null;
 	let addAnother = true;
 	let theme: 'dark' | 'light' = 'dark';
+	const langOptions = [
+		{ value: 'en', label: 'English' },
+		{ value: 'ru', label: 'Русский' }
+	] as const;
+	const themeOptions = ['dark', 'light'] as const;
 	let isLangOpen = false;
 	let isThemeOpen = false;
+	let activeLangIndex = 0;
+	let activeThemeIndex = 0;
 	let langDropdown: HTMLDivElement | null = null;
 	let themeDropdown: HTMLDivElement | null = null;
+	let langListbox: HTMLDivElement | null = null;
+	let themeListbox: HTMLDivElement | null = null;
+	let langTrigger: HTMLButtonElement | null = null;
+	let themeTrigger: HTMLButtonElement | null = null;
 	type GroupedEntry = {
 		id: string;
 		items: Item[];
@@ -119,14 +130,68 @@ let confirmDialog: HTMLDialogElement | null = null;
 		}
 	};
 
-	const toggleLangDropdown = () => {
-		isLangOpen = !isLangOpen;
-		if (isLangOpen) isThemeOpen = false;
+	const getLangLabel = (value: 'en' | 'ru') => (value === 'ru' ? 'Русский' : 'English');
+
+	const getThemeLabel = (value: 'dark' | 'light') =>
+		value === 'light' ? $t.themeLight : $t.themeDark;
+
+	const getLangIndex = (value: 'en' | 'ru' = $locale) => {
+		const index = langOptions.findIndex((option) => option.value === value);
+		return index === -1 ? 0 : index;
 	};
 
-	const toggleThemeDropdown = () => {
-		isThemeOpen = !isThemeOpen;
-		if (isThemeOpen) isLangOpen = false;
+	const getThemeIndex = (value: 'dark' | 'light' = theme) => {
+		const index = themeOptions.indexOf(value);
+		return index === -1 ? 0 : index;
+	};
+
+	const getNextIndex = (current: number, delta: number, length: number) =>
+		(current + delta + length) % length;
+
+	const openLangDropdown = async (direction?: 'up' | 'down') => {
+		isLangOpen = true;
+		isThemeOpen = false;
+		const selectedIndex = getLangIndex();
+		if (direction === 'down') {
+			activeLangIndex = getNextIndex(selectedIndex, 1, langOptions.length);
+		} else if (direction === 'up') {
+			activeLangIndex = getNextIndex(selectedIndex, -1, langOptions.length);
+		} else {
+			activeLangIndex = selectedIndex;
+		}
+		await tick();
+		langListbox?.focus();
+	};
+
+	const openThemeDropdown = async (direction?: 'up' | 'down') => {
+		isThemeOpen = true;
+		isLangOpen = false;
+		const selectedIndex = getThemeIndex();
+		if (direction === 'down') {
+			activeThemeIndex = getNextIndex(selectedIndex, 1, themeOptions.length);
+		} else if (direction === 'up') {
+			activeThemeIndex = getNextIndex(selectedIndex, -1, themeOptions.length);
+		} else {
+			activeThemeIndex = selectedIndex;
+		}
+		await tick();
+		themeListbox?.focus();
+	};
+
+	const toggleLangDropdown = async () => {
+		if (isLangOpen) {
+			closeDropdowns();
+			return;
+		}
+		await openLangDropdown();
+	};
+
+	const toggleThemeDropdown = async () => {
+		if (isThemeOpen) {
+			closeDropdowns();
+			return;
+		}
+		await openThemeDropdown();
 	};
 
 	const closeDropdowns = () => {
@@ -134,11 +199,21 @@ let confirmDialog: HTMLDialogElement | null = null;
 		isThemeOpen = false;
 	};
 
-	const handleDropdownTriggerKey = (event: KeyboardEvent, target: 'lang' | 'theme') => {
+	const handleDropdownTriggerKey = async (event: KeyboardEvent, target: 'lang' | 'theme') => {
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
-			if (target === 'lang') toggleLangDropdown();
-			if (target === 'theme') toggleThemeDropdown();
+			if (target === 'lang') await toggleLangDropdown();
+			if (target === 'theme') await toggleThemeDropdown();
+		}
+		if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			if (target === 'lang') await openLangDropdown('down');
+			if (target === 'theme') await openThemeDropdown('down');
+		}
+		if (event.key === 'ArrowUp') {
+			event.preventDefault();
+			if (target === 'lang') await openLangDropdown('up');
+			if (target === 'theme') await openThemeDropdown('up');
 		}
 		if (event.key === 'Escape') {
 			event.preventDefault();
@@ -148,12 +223,78 @@ let confirmDialog: HTMLDialogElement | null = null;
 
 	const selectLocale = (value: 'en' | 'ru') => {
 		$locale = value;
+		activeLangIndex = getLangIndex(value);
 		closeDropdowns();
+		langTrigger?.focus();
 	};
 
 	const selectTheme = (value: 'dark' | 'light') => {
 		setTheme(value);
+		activeThemeIndex = getThemeIndex(value);
 		closeDropdowns();
+		themeTrigger?.focus();
+	};
+
+	const handleLangListboxKey = (event: KeyboardEvent) => {
+		if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			activeLangIndex = getNextIndex(activeLangIndex, 1, langOptions.length);
+		}
+		if (event.key === 'ArrowUp') {
+			event.preventDefault();
+			activeLangIndex = getNextIndex(activeLangIndex, -1, langOptions.length);
+		}
+		if (event.key === 'Home') {
+			event.preventDefault();
+			activeLangIndex = 0;
+		}
+		if (event.key === 'End') {
+			event.preventDefault();
+			activeLangIndex = langOptions.length - 1;
+		}
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			selectLocale(langOptions[activeLangIndex].value);
+		}
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			closeDropdowns();
+			langTrigger?.focus();
+		}
+		if (event.key === 'Tab') {
+			closeDropdowns();
+		}
+	};
+
+	const handleThemeListboxKey = (event: KeyboardEvent) => {
+		if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			activeThemeIndex = getNextIndex(activeThemeIndex, 1, themeOptions.length);
+		}
+		if (event.key === 'ArrowUp') {
+			event.preventDefault();
+			activeThemeIndex = getNextIndex(activeThemeIndex, -1, themeOptions.length);
+		}
+		if (event.key === 'Home') {
+			event.preventDefault();
+			activeThemeIndex = 0;
+		}
+		if (event.key === 'End') {
+			event.preventDefault();
+			activeThemeIndex = themeOptions.length - 1;
+		}
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			selectTheme(themeOptions[activeThemeIndex]);
+		}
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			closeDropdowns();
+			themeTrigger?.focus();
+		}
+		if (event.key === 'Tab') {
+			closeDropdowns();
+		}
 	};
 
 	const handleDocumentClick = (event: MouseEvent) => {
@@ -478,10 +619,9 @@ let confirmDialog: HTMLDialogElement | null = null;
 
 	onMount(() => {
 		document.addEventListener('click', handleDocumentClick);
-	});
-
-	onDestroy(() => {
-		document.removeEventListener('click', handleDocumentClick);
+		return () => {
+			document.removeEventListener('click', handleDocumentClick);
+		};
 	});
 
 	$: categoryMap = new Map(
@@ -496,7 +636,7 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 	);
 	$: totalItemCount = items.length;
 	$: activeItemCount = items.reduce((count, item) => (item.purchased ? count : count + 1), 0);
-	$: itemStatsLabel = `${activeItemCount} / ${totalItemCount} ${$t.itemsCount}`;
+	$: itemStatsLabel = `${activeItemCount} / ${totalItemCount} ${$t.itemsCount(totalItemCount)}`;
 	$: grouped = items.reduce<Record<string, Item[]>>((acc, item) => {
 		(acc[item.categoryId] ||= []).push(item);
 		return acc;
@@ -573,35 +713,41 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 				type="button"
 				aria-haspopup="listbox"
 				aria-expanded={isLangOpen}
+				aria-controls="lang-listbox"
 				aria-labelledby="lang-label"
+				bind:this={langTrigger}
 				on:click={toggleLangDropdown}
 				on:keydown={(event) => handleDropdownTriggerKey(event, 'lang')}
 			>
-				<span>{$locale === 'ru' ? 'Русский' : 'English'}</span>
+				<span>{getLangLabel($locale)}</span>
 				<svg class="dropdown-caret" viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M6 9l6 6 6-6" />
 				</svg>
 			</button>
 			{#if isLangOpen}
-				<div class="dropdown-menu" role="listbox" aria-labelledby="lang-label">
-					<button
-						type="button"
-						role="option"
-						class={`dropdown-option ${$locale === 'en' ? 'active' : ''}`}
-						aria-selected={$locale === 'en'}
-						on:click={() => selectLocale('en')}
-					>
-						English
-					</button>
-					<button
-						type="button"
-						role="option"
-						class={`dropdown-option ${$locale === 'ru' ? 'active' : ''}`}
-						aria-selected={$locale === 'ru'}
-						on:click={() => selectLocale('ru')}
-					>
-						Русский
-					</button>
+				<div
+					class="dropdown-menu"
+					id="lang-listbox"
+					role="listbox"
+					tabindex="0"
+					aria-labelledby="lang-label"
+					aria-activedescendant={`lang-option-${langOptions[activeLangIndex].value}`}
+					bind:this={langListbox}
+					on:keydown={handleLangListboxKey}
+				>
+					{#each langOptions as option, index}
+						<button
+							type="button"
+							role="option"
+							tabindex="-1"
+							id={`lang-option-${option.value}`}
+							class={`dropdown-option ${index === activeLangIndex ? 'active' : ''}`}
+							aria-selected={$locale === option.value}
+							on:click={() => selectLocale(option.value)}
+						>
+							{option.label}
+						</button>
+					{/each}
 				</div>
 			{/if}
 		</div>
@@ -612,35 +758,41 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 				type="button"
 				aria-haspopup="listbox"
 				aria-expanded={isThemeOpen}
+				aria-controls="theme-listbox"
 				aria-labelledby="theme-label"
+				bind:this={themeTrigger}
 				on:click={toggleThemeDropdown}
 				on:keydown={(event) => handleDropdownTriggerKey(event, 'theme')}
 			>
-				<span>{theme === 'light' ? $t.themeLight : $t.themeDark}</span>
+				<span>{getThemeLabel(theme)}</span>
 				<svg class="dropdown-caret" viewBox="0 0 24 24" aria-hidden="true">
 					<path d="M6 9l6 6 6-6" />
 				</svg>
 			</button>
 			{#if isThemeOpen}
-				<div class="dropdown-menu" role="listbox" aria-labelledby="theme-label">
-					<button
-						type="button"
-						role="option"
-						class={`dropdown-option ${theme === 'dark' ? 'active' : ''}`}
-						aria-selected={theme === 'dark'}
-						on:click={() => selectTheme('dark')}
-					>
-						{$t.themeDark}
-					</button>
-					<button
-						type="button"
-						role="option"
-						class={`dropdown-option ${theme === 'light' ? 'active' : ''}`}
-						aria-selected={theme === 'light'}
-						on:click={() => selectTheme('light')}
-					>
-						{$t.themeLight}
-					</button>
+				<div
+					class="dropdown-menu"
+					id="theme-listbox"
+					role="listbox"
+					tabindex="0"
+					aria-labelledby="theme-label"
+					aria-activedescendant={`theme-option-${themeOptions[activeThemeIndex]}`}
+					bind:this={themeListbox}
+					on:keydown={handleThemeListboxKey}
+				>
+					{#each themeOptions as option, index}
+						<button
+							type="button"
+							role="option"
+							tabindex="-1"
+							id={`theme-option-${option}`}
+							class={`dropdown-option ${index === activeThemeIndex ? 'active' : ''}`}
+							aria-selected={theme === option}
+							on:click={() => selectTheme(option)}
+						>
+							{getThemeLabel(option)}
+						</button>
+					{/each}
 				</div>
 			{/if}
 		</div>
@@ -725,9 +877,9 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 						<span
 							class="meta category-stats"
 							aria-live="polite"
-							aria-label={`${categoryMap.get(group.id) ?? $t.otherCategory}: ${$t.activeItemsLabel} ${group.activeCount}/${group.items.length}. ${$t.totalItemsLabel}: ${group.items.length} ${$t.itemsCount}`}
+							aria-label={`${categoryMap.get(group.id) ?? $t.otherCategory}: ${$t.activeItemsLabel} ${group.activeCount}/${group.items.length}. ${$t.totalItemsLabel}: ${group.items.length} ${$t.itemsCount(group.items.length)}`}
 						>
-							<span aria-hidden="true">{group.activeCount} / {group.items.length} {$t.itemsCount}</span>
+							<span aria-hidden="true">{group.activeCount} / {group.items.length} {$t.itemsCount(group.items.length)}</span>
 						</span>
 					</div>
 					{#each group.items as item (item.id)}
@@ -741,8 +893,8 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 										(event.currentTarget as HTMLInputElement).checked
 									)}
 							/>
-							<div>
-								<strong>{productNameMap.get(item.productId) ?? item.name}</strong>
+								<div>
+									<strong class="item-title">{productNameMap.get(item.productId) ?? item.name}</strong>
 								<div class="meta">
 									{item.quantity} {unitMap.get(item.unitId) ?? ''}
 									{#if item.scope}
@@ -825,7 +977,7 @@ $: otherCategoryId = categories.find((category) => category.id === 'cat-other')?
 		{#if pendingPayload}
 			<p>
 				{$t.foundList} <strong>{pendingPayload.listName}</strong> {$t.withItems}
-				{pendingPayload.items.length} {$t.itemsCount}.
+				{pendingPayload.items.length} {$t.itemsCount(pendingPayload.items.length)}.
 			</p>
 			<div class="field">
 				<label>{$t.importModeLabel}</label>

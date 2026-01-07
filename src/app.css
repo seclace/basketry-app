@@ -488,6 +488,9 @@ textarea {
 
 .item-row.done {
 	opacity: 0.6;
+}
+
+.item-row.done .item-title {
 	text-decoration: line-through;
 	text-decoration-thickness: 2px;
 }
