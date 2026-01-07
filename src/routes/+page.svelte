@@ -111,8 +111,17 @@
 		categories = await getCategories();
 		units = await getUnits();
 		products = await getProducts();
+		if (!activeListId && typeof localStorage !== 'undefined') {
+			const stored = localStorage.getItem('basketry-active-list');
+			if (stored && lists.some((list) => list.id === stored)) {
+				activeListId = stored;
+			}
+		}
 		if (!activeListId && lists.length > 0) {
 			activeListId = lists[0].id;
+		}
+		if (activeListId && typeof localStorage !== 'undefined') {
+			localStorage.setItem('basketry-active-list', activeListId);
 		}
 		listTitle = lists.find((list) => list.id === activeListId)?.name ?? '';
 		mergeTargetId = activeListId ?? '';
@@ -335,6 +344,9 @@
 
 	const selectList = async (id: string) => {
 		activeListId = id;
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem('basketry-active-list', id);
+		}
 		listTitle = lists.find((list) => list.id === id)?.name ?? '';
 		mergeTargetId = id;
 		await loadItems();
@@ -378,6 +390,9 @@
 		if (!activeListId) return;
 		await deleteList(activeListId);
 		activeListId = null;
+		if (typeof localStorage !== 'undefined') {
+			localStorage.removeItem('basketry-active-list');
+		}
 		confirmDialog?.close();
 		await loadAll();
 	};
